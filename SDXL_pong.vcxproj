@@ -141,6 +141,17 @@
   <ItemGroup>
     <ClCompile Include="DrawFigure.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <Media Include="sound\battle.mp3" />
+    <Media Include="sound\recover.mp3" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="image\bg.png" />
+    <Image Include="image\dog0.png" />
+    <Image Include="image\dog1.png" />
+    <Image Include="image\dog2.png" />
+    <Image Include="image\dog3.png" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

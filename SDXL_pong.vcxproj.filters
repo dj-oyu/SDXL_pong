@@ -19,4 +19,29 @@
       <Filter>ソース ファイル</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <Media Include="sound\battle.mp3">
+      <Filter>リソース ファイル</Filter>
+    </Media>
+    <Media Include="sound\recover.mp3">
+      <Filter>リソース ファイル</Filter>
+    </Media>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="image\bg.png">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="image\dog0.png">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="image\dog1.png">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="image\dog2.png">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="image\dog3.png">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+  </ItemGroup>
 </Project>

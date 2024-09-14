@@ -10,6 +10,8 @@ typedef struct {
 	int x, y, w, h;
 } Boundary;
 
+const int stroke = 8;
+
 Ball* spawnBall(int x, int y, int r, int c, int vx, int vy) {
 	Ball* ball = (Ball*) malloc(sizeof Ball);
 	if (ball == NULL) return NULL;
@@ -35,7 +37,7 @@ Boundary* spawnBoundary(int x, int y, int w, int h) {
 }
 
 int drawRect(Boundary* boundary, int color) {
-	int result = 0, stroke = 8;
+	int result = 0;
 	// left wall
 	result |= DrawBox(boundary->x - stroke, boundary->y - stroke, boundary->x, boundary->y + boundary->h, color, TRUE);
 	// bottom wall
@@ -59,7 +61,7 @@ int moveBall(Ball* ball) {
 
 int isHitBoundary(Ball* ball, Boundary* boundary) {
 	int hit = 0;
-	if (ball->vx < 0 && ball->x - ball->r < boundary->x + ball->vx / 2) {
+	if (ball->vx < 0 && ball->x - ball->r < boundary->x + -ball->vx / 2) {
 		ball->vx = -ball->vx;
 		hit |= 1;
 	}
@@ -67,7 +69,7 @@ int isHitBoundary(Ball* ball, Boundary* boundary) {
 		ball->vx = -ball->vx;
 		hit |= 2;
 	}
-	if (ball->vy < 0 && ball->y - ball->r < boundary->y + ball->vy / 2) {
+	if (ball->vy < 0 && ball->y - ball->r < boundary->y + -ball->vy / 2) {
 		ball->vy = -ball->vy;
 		hit |= 4;
 	}
@@ -101,11 +103,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	SetBackgroundColor(0, 0, 0);
 	SetDrawScreen(DX_SCREEN_BACK);
 
-	Ball* ball = spawnBall(WIDTH / 2, HEIGHT / 2, 6, color[GREEN], 5, 10);
-	drawBall(ball);
-
+	Ball* ball = spawnBall(WIDTH / 2, HEIGHT / 2, 6, color[GREEN], -5, 10);
 	Boundary* boundary = spawnBoundary(WIDTH / 2 - 100, HEIGHT / 2 - 100, 200, 200);
 	int hitFlag = 0;
+	int colorIdx = 0;
 
 	while (1) {
 		ClearDrawScreen();
@@ -116,11 +117,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		drawBall(ball);
 
 		if ((hitFlag = isHitBoundary(ball, boundary)) != 0) {
-			int stroke = 8;
-			if (hitFlag & 1) DrawBox(boundary->x - stroke, boundary->y, boundary->x, boundary->y + boundary->h, color[BLUE], TRUE);
-			if (hitFlag & 2) DrawBox(boundary->x + boundary->w, boundary->y, boundary->x + boundary->w + stroke, boundary->y + boundary->h, color[BLUE], TRUE);
-			if (hitFlag & 4) DrawBox(boundary->x, boundary->y - stroke, boundary->x + boundary->w, boundary->y, color[BLUE], TRUE);
-			if (hitFlag & 8) DrawBox(boundary->x, boundary->y + boundary->h, boundary->x + boundary->w, boundary->y + boundary->h + stroke, color[BLUE], TRUE);
+			
+			if (hitFlag & 1) DrawBox(boundary->x - stroke, boundary->y - stroke, boundary->x, boundary->y + boundary->h + stroke, color[BLUE], TRUE);
+			if (hitFlag & 2) DrawBox(boundary->x + boundary->w, boundary->y - stroke, boundary->x + boundary->w + stroke, boundary->y + boundary->h + stroke, color[BLUE], TRUE);
+			if (hitFlag & 4) DrawBox(boundary->x - stroke, boundary->y - stroke, boundary->x + boundary->w + stroke, boundary->y, color[BLUE], TRUE);
+			if (hitFlag & 8) DrawBox(boundary->x - stroke, boundary->y + boundary->h, boundary->x + boundary->w + stroke, boundary->y + boundary->h + stroke, color[BLUE], TRUE);
 			ScreenFlip();
 			WaitTimer(33 * 6);
 		}
