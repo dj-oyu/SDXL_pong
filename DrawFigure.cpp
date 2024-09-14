@@ -152,13 +152,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	SetBackgroundColor(0, 0, 0);
 	SetDrawScreen(DX_SCREEN_BACK);
 
-	const int ball_x = WIDTH / 2, ball_y = HEIGHT / 2, ball_r = 6;
+	const int ball_x = WIDTH / 2, ball_y = HEIGHT / 4, ball_r = 6;
 	double ball_vx, ball_vy; randomBallVelocity(&ball_vx, &ball_vy);
 
 	Ball* ball = spawnBall(ball_x, ball_y, ball_r, color[GREEN], ball_vx, ball_vy);
 	Boundary* boundary = spawnBoundary(stroke, 20 - stroke, WIDTH - 2 * stroke, HEIGHT - 2 * stroke);
 	Racket* racket = spawnRacket(WIDTH / 2, HEIGHT - 50, color[WHITE], 100, 20);
 	int timer = 0, hitFlag = 0, hitStop = 0, spd = 0, spdUpFlag = 0;
+	int score = 0, highScore = 0;
 
 	
 	while (1) {
@@ -186,6 +187,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			DrawFormatString(10, 10, color[WHITE], "Time: %d", timer);
 			DrawFormatString(10, 30, color[WHITE], "Speed: %2.2lf %2.2lf", ball->vx, ball->vy);
+			DrawFormatString(WIDTH - 150, 10, color[WHITE], "Score: %d", score);
+			DrawFormatString(WIDTH - 150, 30, color[WHITE], "High Score: %d", highScore);
+
 			drawBall(ball);
 			if (hitStop == 0) {
 				hitFlag = 0;
@@ -218,6 +222,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			}
 			if (hitFlag == 0 && isHitRacket(ball, racket)) {
 				hitStop = 3;
+				score += 10;
+				highScore = max(highScore, score);
+
 				if (rand() % 3 == 0) {
 					double d = rand() % 100 / 100.0 * pow(-1, rand() % 2);
 					ball->vx += d;
@@ -239,6 +246,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
 			DrawString(100, 100, "Game Over", color[WHITE]);
 			DrawString(100, 200, "Press Enter to restart", color[WHITE]);
+
+			if (score == highScore) DrawFormatString(100, 300, color[WHITE], "New High Score!\nScore: %d", score);
+			else DrawFormatString(100, 300, color[WHITE], "Score: %d", score);
+
 			if (CheckHitKey(KEY_INPUT_RETURN)) { 
 				Scene = GAME; 
 				// Reset all
@@ -249,6 +260,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				hitFlag = 0;
 				hitStop = 0;
 				spd = 1;
+				score = 0;
 			}
 			break;
 		}
