@@ -1,9 +1,17 @@
 #include "DxLib.h"
+#define _USE_MATH_DEFINES
+#include <math.h>
+#include <time.h>
+
+typedef struct {
+	int c_x, c_y, w, h;
+	int color;
+} Racket;
 
 typedef struct {
 	int x, y, r;
 	int c;
-	int vx, vy;
+	double vx, vy;
 } Ball;
 
 typedef struct {
@@ -11,8 +19,31 @@ typedef struct {
 } Boundary;
 
 const int stroke = 8;
+const int WIDTH = 960, HEIGHT = 640;
+enum { BLACK, WHITE, RED, GREEN, BLUE, YELLOW, CYAN, MAGENTA, GRAY };
+int color[9] = {
+	GetColor(0, 0, 0),
+	GetColor(255, 255, 255),
+	GetColor(255, 0, 0),
+	GetColor(0, 255, 0),
+	GetColor(0, 0, 255),
+	GetColor(255, 255, 0),
+	GetColor(0, 255, 255),
+	GetColor(255, 0, 255),
+	GetColor(128, 128, 128)
+};
 
-Ball* spawnBall(int x, int y, int r, int c, int vx, int vy) {
+// Scenes
+enum { TITLE, GAME, GAME_OVER, RESULT };
+int Scene = TITLE;
+
+void randomBallVelocity(double* vx, double* vy) {
+	double rad = (rand() % 120 + 30) * M_PI / 180.0;
+	*vx = cos(rad) * 4;
+	*vy = sin(rad) * 7;
+}
+
+Ball* spawnBall(int x, int y, int r, int c, double vx, double vy) {
 	Ball* ball = (Ball*) malloc(sizeof Ball);
 	if (ball == NULL) return NULL;
 
@@ -36,6 +67,18 @@ Boundary* spawnBoundary(int x, int y, int w, int h) {
 	return boundary;
 }
 
+Racket* spawnRacket(int x, int y, int color, int w, int h) {
+	Racket* racket = (Racket*)malloc(sizeof Racket);
+	if (racket == NULL) return NULL;
+
+	racket->c_x = x;
+	racket->c_y = y;
+	racket->color = color;
+	racket->w = w;
+	racket->h = h;
+	return racket;
+}
+
 int drawRect(Boundary* boundary, int color) {
 	int result = 0;
 	// left wall
@@ -53,10 +96,18 @@ int drawBall(Ball* ball) {
 	return DrawCircle(ball->x, ball->y, ball->r, ball->c, TRUE);
 }
 
-int moveBall(Ball* ball) {
+void moveBall(Ball* ball) {
 	ball->x += ball->vx;
 	ball->y += ball->vy;
-	return 0;
+}
+
+int drawRacket(Racket* racket) {
+	return DrawBox(racket->c_x - racket->w / 2, racket->c_y - racket->h / 2, racket->c_x + racket->w / 2, racket->c_y + racket->h / 2, racket->color, TRUE);
+}
+
+void moveRacket(Racket* racket, int dx, int dy) {
+	racket->c_x = min(max(racket->c_x + dx, racket->w / 2), WIDTH - racket->w / 2);
+	racket->c_y = min(max(racket->c_y + dy, racket->h / 2), HEIGHT - racket->h / 2);
 }
 
 int isHitBoundary(Ball* ball, Boundary* boundary) {
@@ -80,21 +131,19 @@ int isHitBoundary(Ball* ball, Boundary* boundary) {
 	return hit;
 }
 
+int isHitRacket(Ball* ball, Racket* racket) {
+	if (ball->vy > 0 && ball->y + ball->r > racket->c_y - racket->h / 2 - ball->vy / 2 && ball->y + ball->r < racket->c_y + racket->h / 2) {
+		if (ball->x + ball->r > racket->c_x - racket->w / 2 && ball->x - ball->r < racket->c_x + racket->w / 2) {
+			ball->vy = -ball->vy;
+			return 1;
+		}
+	}
+	return 0;
+}
+
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
-	const int WIDTH = 960, HEIGHT = 640;
-	enum { BLACK, WHITE, RED, GREEN, BLUE, YELLOW, CYAN, MAGENTA, GRAY };
-	int color[9] = {
-		GetColor(0, 0, 0),
-		GetColor(255, 255, 255),
-		GetColor(255, 0, 0),
-		GetColor(0, 255, 0),
-		GetColor(0, 0, 255),
-		GetColor(255, 255, 0),
-		GetColor(0, 255, 255),
-		GetColor(255, 0, 255),
-		GetColor(128, 128, 128)
-	};
+	srand((unsigned)time(NULL));
 
 	SetWindowText("Pong");
 	SetGraphMode(WIDTH, HEIGHT, 32);
@@ -103,38 +152,114 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	SetBackgroundColor(0, 0, 0);
 	SetDrawScreen(DX_SCREEN_BACK);
 
-	Ball* ball = spawnBall(WIDTH / 2, HEIGHT / 2, 6, color[GREEN], -5, 10);
-	Boundary* boundary = spawnBoundary(WIDTH / 2 - 100, HEIGHT / 2 - 100, 200, 200);
-	int hitFlag = 0;
-	int colorIdx = 0;
+	const int ball_x = WIDTH / 2, ball_y = HEIGHT / 2, ball_r = 6;
+	double ball_vx, ball_vy; randomBallVelocity(&ball_vx, &ball_vy);
 
+	Ball* ball = spawnBall(ball_x, ball_y, ball_r, color[GREEN], ball_vx, ball_vy);
+	Boundary* boundary = spawnBoundary(stroke, 20 - stroke, WIDTH - 2 * stroke, HEIGHT - 2 * stroke);
+	Racket* racket = spawnRacket(WIDTH / 2, HEIGHT - 50, color[WHITE], 100, 20);
+	int timer = 0, hitFlag = 0, hitStop = 0, spd = 0, spdUpFlag = 0;
+
+	
 	while (1) {
 		ClearDrawScreen();
-		hitFlag = 0;
 
+		if (CheckHitKey(KEY_INPUT_LEFT)) moveRacket(racket, -5, 0);
+		if (CheckHitKey(KEY_INPUT_RIGHT)) moveRacket(racket, 5, 0);
+
+		drawRacket(racket);
 		drawRect(boundary, color[RED]);
-		moveBall(ball);
-		drawBall(ball);
 
-		if ((hitFlag = isHitBoundary(ball, boundary)) != 0) {
-			
-			if (hitFlag & 1) DrawBox(boundary->x - stroke, boundary->y - stroke, boundary->x, boundary->y + boundary->h + stroke, color[BLUE], TRUE);
-			if (hitFlag & 2) DrawBox(boundary->x + boundary->w, boundary->y - stroke, boundary->x + boundary->w + stroke, boundary->y + boundary->h + stroke, color[BLUE], TRUE);
-			if (hitFlag & 4) DrawBox(boundary->x - stroke, boundary->y - stroke, boundary->x + boundary->w + stroke, boundary->y, color[BLUE], TRUE);
-			if (hitFlag & 8) DrawBox(boundary->x - stroke, boundary->y + boundary->h, boundary->x + boundary->w + stroke, boundary->y + boundary->h + stroke, color[BLUE], TRUE);
-			ScreenFlip();
-			WaitTimer(33 * 6);
-		}
-		else {
-			ScreenFlip();
-			WaitTimer(16);
+		switch (Scene) {
+		case TITLE:
+			// alpha blending
+			SetDrawBlendMode(DX_BLENDMODE_ALPHA, 128);
+			DrawBox(0, 0, WIDTH, HEIGHT, color[CYAN], TRUE);
+			SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
+			DrawString(100, 100, "Pong", color[WHITE]);
+			DrawString(100, 200, "Press Enter to start", color[WHITE]);
+			if (CheckHitKey(KEY_INPUT_RETURN)) Scene = GAME;
+			break;
+		
+		case GAME:
+			timer++;
+
+			DrawFormatString(10, 10, color[WHITE], "Time: %d", timer);
+			DrawFormatString(10, 30, color[WHITE], "Speed: %2.2lf %2.2lf", ball->vx, ball->vy);
+			drawBall(ball);
+			if (hitStop == 0) {
+				hitFlag = 0;
+				if ((timer & 0x3FF) == 0) {
+					spdUpFlag++;
+				}
+				moveBall(ball);
+			}
+			else {
+				if (hitFlag & 1) DrawBox(boundary->x - stroke, boundary->y - stroke, boundary->x, boundary->y + boundary->h + stroke, color[BLUE], TRUE);
+				if (hitFlag & 2) DrawBox(boundary->x + boundary->w, boundary->y - stroke, boundary->x + boundary->w + stroke, boundary->y + boundary->h + stroke, color[BLUE], TRUE);
+				if (hitFlag & 4) DrawBox(boundary->x - stroke, boundary->y - stroke, boundary->x + boundary->w + stroke, boundary->y, color[BLUE], TRUE);
+				if (hitFlag & 8) {
+					DrawBox(boundary->x - stroke, boundary->y + boundary->h, boundary->x + boundary->w + stroke, boundary->y + boundary->h + stroke, color[BLUE], TRUE);
+					Scene = GAME_OVER;
+					WaitTimer(500);
+					break;
+				}
+
+				hitStop--;
+			}
+
+			if (hitFlag == 0 && (hitFlag = isHitBoundary(ball, boundary)) != 0) {
+				hitStop = 8;
+				if (spdUpFlag) {
+					spd += spdUpFlag;
+					ball->vy += ball->vy > 0 ? spd : -spd;
+					spdUpFlag = 0;
+				}
+			}
+			if (hitFlag == 0 && isHitRacket(ball, racket)) {
+				hitStop = 3;
+				if (rand() % 3 == 0) {
+					double d = rand() % 100 / 100.0 * pow(-1, rand() % 2);
+					ball->vx += d;
+				}
+				if (spdUpFlag) {
+					spd += spdUpFlag;
+					ball->vy += ball->vy > 0 ? spd : -spd;
+					if ((rand() & 0x3) == 0) {
+						ball->vx += ball->vx > 0 ? spd : -spd;
+					}
+					spdUpFlag = 0;
+				}
+			}
+			break;
+
+		case GAME_OVER:
+			SetDrawBlendMode(DX_BLENDMODE_ALPHA, 128);
+			DrawBox(0, 0, WIDTH, HEIGHT, color[BLACK], TRUE);
+			SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
+			DrawString(100, 100, "Game Over", color[WHITE]);
+			DrawString(100, 200, "Press Enter to restart", color[WHITE]);
+			if (CheckHitKey(KEY_INPUT_RETURN)) { 
+				Scene = GAME; 
+				// Reset all
+				ball->x = ball_x;
+				ball->y = ball_y;
+				randomBallVelocity(&ball->vx, &ball->vy);
+				timer = 0;
+				hitFlag = 0;
+				hitStop = 0;
+				spd = 1;
+			}
+			break;
 		}
 
+		ScreenFlip();
+		WaitTimer(16);
 		if (ProcessMessage() != 0) break;
 		if (CheckHitKey(KEY_INPUT_ESCAPE)) break;
 	}
 
-	DxLib_End();
+	DxLib::DxLib_End();
 
 	return 0;
 }
