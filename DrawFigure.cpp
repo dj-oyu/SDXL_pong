@@ -156,14 +156,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	double ball_vx, ball_vy; randomBallVelocity(&ball_vx, &ball_vy);
 
 	Ball* ball = spawnBall(ball_x, ball_y, ball_r, color[GREEN], ball_vx, ball_vy);
-	Boundary* boundary = spawnBoundary(stroke, 20 - stroke, WIDTH - 2 * stroke, HEIGHT - 2 * stroke);
+	Boundary* boundary = spawnBoundary(stroke, stroke, WIDTH - 2 * stroke, HEIGHT - 2 * stroke);
 	Racket* racket = spawnRacket(WIDTH / 2, HEIGHT - 50, color[WHITE], 100, 20);
 	int timer = 0, hitFlag = 0, hitStop = 0, spd = 0, spdUpFlag = 0;
 	int score = 0, highScore = 0;
 
+	// load assets
+	int bg = LoadGraph("image/bg.png");
+	int bgm = LoadSoundMem("sound/bgm.mp3");
+	int gameover = LoadSoundMem("sound/gameover.mp3");
+	int hit = LoadSoundMem("sound/hit.mp3");
+	ChangeVolumeSoundMem(128, bgm);
+	ChangeVolumeSoundMem(128, gameover);
 	
 	while (1) {
 		ClearDrawScreen();
+		DrawGraph(0, 0, bg, FALSE);
 
 		if (CheckHitKey(KEY_INPUT_LEFT)) moveRacket(racket, -5, 0);
 		if (CheckHitKey(KEY_INPUT_RIGHT)) moveRacket(racket, 5, 0);
@@ -179,7 +187,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
 			DrawString(100, 100, "Pong", color[WHITE]);
 			DrawString(100, 200, "Press Enter to start", color[WHITE]);
-			if (CheckHitKey(KEY_INPUT_RETURN)) Scene = GAME;
+			if (CheckHitKey(KEY_INPUT_RETURN)) 
+			{
+				Scene = GAME;
+				PlaySoundMem(bgm, DX_PLAYTYPE_LOOP);
+			}
 			break;
 		
 		case GAME:
@@ -205,6 +217,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				if (hitFlag & 8) {
 					DrawBox(boundary->x - stroke, boundary->y + boundary->h, boundary->x + boundary->w + stroke, boundary->y + boundary->h + stroke, color[BLUE], TRUE);
 					Scene = GAME_OVER;
+					StopSoundMem(bgm);
+					PlaySoundMem(gameover, DX_PLAYTYPE_BACK);
 					WaitTimer(500);
 					break;
 				}
@@ -221,6 +235,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				}
 			}
 			if (hitFlag == 0 && isHitRacket(ball, racket)) {
+				PlaySoundMem(hit, DX_PLAYTYPE_BACK);
+
 				hitStop = 3;
 				score += 10;
 				highScore = max(highScore, score);
@@ -251,7 +267,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			else DrawFormatString(100, 300, color[WHITE], "Score: %d", score);
 
 			if (CheckHitKey(KEY_INPUT_RETURN)) { 
-				Scene = GAME; 
+				Scene = GAME;
+				StopSoundMem(gameover);
+				PlaySoundMem(bgm, DX_PLAYTYPE_LOOP);
 				// Reset all
 				ball->x = ball_x;
 				ball->y = ball_y;
